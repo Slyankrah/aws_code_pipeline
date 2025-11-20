@@ -7,21 +7,26 @@ phases:
     commands:
       - echo Installing dependencies...
       - pip install --upgrade awscli boto3
+
   pre_build:
     commands:
       - echo Packaging Lambda function...
       - cd lambda
       - zip -r ../lambda/ingestion.zip ingestion.py
       - cd ..
+
   build:
     commands:
+      - echo ARTIFACTS_BUCKET=$ARTIFACTS_BUCKET
+      - echo AWS_REGION=$AWS_REGION
       - echo Uploading Lambda package to S3...
-      - aws s3 cp lambda/ingestion.zip s3://bdp-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}/lambda/ingestion.zip
+      - aws s3 cp lambda/ingestion.zip s3://$ARTIFACTS_BUCKET/lambda/ingestion.zip
       - echo Uploading Glue scripts to S3...
-      - aws s3 cp glue/bronze_to_silver.py s3://bdp-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}/glue/bronze_to_silver.py
-      - aws s3 cp glue/silver_to_gold.py s3://bdp-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}/glue/silver_to_gold.py
+      - aws s3 cp glue/bronze_to_silver.py s3://$ARTIFACTS_BUCKET/glue/bronze_to_silver.py
+      - aws s3 cp glue/silver_to_gold.py s3://$ARTIFACTS_BUCKET/glue/silver_to_gold.py
       - echo Deploying CloudFormation stack...
-      - aws cloudformation deploy --template-file cloudformation/infra.yaml --stack-name big-data-pipeline --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GlueServiceRoleName=GlueServiceRole
+      - aws cloudformation deploy --template-file cloudformation/infra.yaml --stack-name big-data-pipeline --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GlueServiceRoleName=GlueServiceRole --region $AWS_REGION
+
 artifacts:
   files:
     - cloudformation/**
