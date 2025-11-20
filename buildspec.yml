@@ -1,5 +1,11 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_REGION: eu-west-2
+    BASE_STACK_NAME: bdp-base-infra
+    APP_STACK_NAME: bdp-app-infra
+
 phases:
   install:
     runtime-versions:
@@ -10,22 +16,36 @@ phases:
 
   pre_build:
     commands:
-      - echo Packaging Lambda function...
+      - echo Packaging Lambda functions...
       - cd lambda
       - zip -r ../lambda/ingestion.zip ingestion.py
+      - zip -r ../lambda/trigger_silver_to_gold.zip trigger_silver_to_gold.py
       - cd ..
 
   build:
     commands:
-      - echo ARTIFACTS_BUCKET=$ARTIFACTS_BUCKET
-      - echo AWS_REGION=$AWS_REGION
-      - echo Uploading Lambda package to S3...
+      - echo "1) Deploy base infra (buckets, roles, glue database)..."
+      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name $BASE_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --region $AWS_REGION
+
+      - echo "2) Read outputs from base stack (ArtifactsBucket, DatalakeBucket, LambdaRoleArn, GlueRoleName)..."
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucket'].OutputValue" --output text)
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucket'].OutputValue" --output text)
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text)
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
+
+      - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
+      - echo "Datalake bucket: $DATALAKE_BUCKET"
+      - echo "Lambda role ARN: $LAMBDA_ROLE_ARN"
+      - echo "Glue role name: $GLUE_ROLE_NAME"
+
+      - echo "3) Upload artifacts (Lambda zips, Glue scripts) to artifacts bucket..."
       - aws s3 cp lambda/ingestion.zip s3://$ARTIFACTS_BUCKET/lambda/ingestion.zip
-      - echo Uploading Glue scripts to S3...
+      - aws s3 cp lambda/trigger_silver_to_gold.zip s3://$ARTIFACTS_BUCKET/lambda/trigger_silver_to_gold.zip
       - aws s3 cp glue/bronze_to_silver.py s3://$ARTIFACTS_BUCKET/glue/bronze_to_silver.py
       - aws s3 cp glue/silver_to_gold.py s3://$ARTIFACTS_BUCKET/glue/silver_to_gold.py
-      - echo Deploying CloudFormation stack...
-      - aws cloudformation deploy --template-file cloudformation/infra.yaml --stack-name big-data-pipeline --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GlueServiceRoleName=GlueServiceRole --region $AWS_REGION
+
+      - echo "4) Deploy app infra (Glue jobs, Lambdas, EventBridge) with artifacts uploaded..."
+      - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name $APP_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=$ARTIFACTS_BUCKET DatalakeBucketName=$DATALAKE_BUCKET GlueServiceRoleName=$GLUE_ROLE_NAME LambdaExecutionRoleArn=$LAMBDA_ROLE_ARN --region $AWS_REGION
 
 artifacts:
   files:

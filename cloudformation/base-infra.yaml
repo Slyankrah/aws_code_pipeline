@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Big Data Pipeline Infrastructure
+Description: Base infra: buckets, IAM roles, Glue database (first deploy)
 
 Parameters:
   GlueServiceRoleName:
@@ -76,51 +76,6 @@ Resources:
                   - arn:aws:s3:::bdp-datalake-sylvester-eu-west-2
                   - arn:aws:s3:::bdp-datalake-sylvester-eu-west-2/*
 
-  GlueDatabase:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: !Ref AWS::AccountId
-      DatabaseInput:
-        Name: big_data_pipeline_db
-
-  GlueJobBronzeToSilver:
-    Type: AWS::Glue::Job
-    Properties:
-      Name: bronze_to_silver
-      Role: !Ref GlueServiceRoleName
-      Command:
-        Name: glueetl
-        ScriptLocation: s3://bdp-artifacts-sylvester-eu-west-2/glue/bronze_to_silver.py
-        PythonVersion: "3"
-      GlueVersion: "3.0"
-      NumberOfWorkers: 2
-      WorkerType: G.1X
-      DefaultArguments:
-        --job-language: python
-        --enable-continuous-cloudwatch-log: true
-        --enable-metrics: true
-        --BRONZE_BUCKET: bdp-datalake-sylvester-eu-west-2
-        --SILVER_BUCKET: bdp-datalake-sylvester-eu-west-2
-
-  GlueJobSilverToGold:
-    Type: AWS::Glue::Job
-    Properties:
-      Name: silver_to_gold
-      Role: !Ref GlueServiceRoleName
-      Command:
-        Name: glueetl
-        ScriptLocation: s3://bdp-artifacts-sylvester-eu-west-2/glue/silver_to_gold.py
-        PythonVersion: "3"
-      GlueVersion: "3.0"
-      NumberOfWorkers: 2
-      WorkerType: G.1X
-      DefaultArguments:
-        --job-language: python
-        --enable-continuous-cloudwatch-log: true
-        --enable-metrics: true
-        --SILVER_BUCKET: bdp-datalake-sylvester-eu-west-2
-        --GOLD_BUCKET: bdp-datalake-sylvester-eu-west-2
-
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -147,38 +102,30 @@ Resources:
                   - s3:PutObject
                 Resource: "*"
 
-  IngestionLambdaFunction:
-    Type: AWS::Lambda::Function
+  GlueDatabase:
+    Type: AWS::Glue::Database
     Properties:
-      FunctionName: ingestion_lambda
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
-      Handler: ingestion.lambda_handler
-      Code:
-        S3Bucket: bdp-artifacts-sylvester-eu-west-2
-        S3Key: lambda/ingestion.zip
-      Timeout: 60
-      Environment:
-        Variables:
-          BRONZE_PREFIX: bronze/
-          SILVER_PREFIX: silver/
-          GOLD_PREFIX: gold/
-          DATALAKE_BUCKET: bdp-datalake-sylvester-eu-west-2
-          BRONZE_TO_SILVER_JOB: bronze_to_silver
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: big_data_pipeline_db
 
 Outputs:
   ArtifactsBucket:
-    Description: Artifacts S3 bucket
+    Description: Artifacts S3 bucket name
     Value: bdp-artifacts-sylvester-eu-west-2
 
   DatalakeBucket:
-    Description: Data lake S3 bucket (contains bronze, silver, gold folders)
+    Description: Datalake S3 bucket name
     Value: bdp-datalake-sylvester-eu-west-2
 
   RawSourceBucket:
-    Description: Raw source S3 bucket
+    Description: Raw source S3 bucket name
     Value: bdp-raw-source-sylvester-eu-west-2
 
-  IngestionLambdaFunctionName:
-    Description: Lambda function name for ingestion
-    Value: ingestion_lambda
+  GlueServiceRoleNameOut:
+    Description: Glue service role name
+    Value: !Ref GlueServiceRole
+
+  LambdaExecutionRoleArn:
+    Description: Lambda execution role ARN
+    Value: !GetAtt LambdaExecutionRole.Arn

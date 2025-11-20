@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: App infra: Glue jobs, Lambdas, EventBridge (deploy after artifacts uploaded)
+
+Parameters:
+  ArtifactsBucketName:
+    Type: String
+    Description: Artifacts bucket (where code is uploaded)
+  DatalakeBucketName:
+    Type: String
+    Description: Datalake bucket (bronze/silver/gold prefixes)
+  GlueServiceRoleName:
+    Type: String
+    Description: Name of Glue service role
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: ARN of Lambda execution role
+
+Resources:
+
+  # Glue job: bronze -> silver
+  GlueJobBronzeToSilver:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: bronze_to_silver
+      Role: !Ref GlueServiceRoleName
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/glue/bronze_to_silver.py"
+        PythonVersion: "3"
+      GlueVersion: "3.0"
+      NumberOfWorkers: 2
+      WorkerType: G.1X
+      DefaultArguments:
+        --job-language: python
+        --enable-continuous-cloudwatch-log: true
+        --enable-metrics: true
+        --BRONZE_BUCKET: !Ref DatalakeBucketName
+        --SILVER_BUCKET: !Ref DatalakeBucketName
+
+  # Glue job: silver -> gold
+  GlueJobSilverToGold:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: silver_to_gold
+      Role: !Ref GlueServiceRoleName
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/glue/silver_to_gold.py"
+        PythonVersion: "3"
+      GlueVersion: "3.0"
+      NumberOfWorkers: 2
+      WorkerType: G.1X
+      DefaultArguments:
+        --job-language: python
+        --enable-continuous-cloudwatch-log: true
+        --enable-metrics: true
+        --SILVER_BUCKET: !Ref DatalakeBucketName
+        --GOLD_BUCKET: !Ref DatalakeBucketName
+
+  # Ingestion Lambda (user-facing): uploads to datalake/bronze/incoming and triggers bronze_to_silver
+  IngestionLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ingestion_lambda
+      Role: !Ref LambdaExecutionRoleArn
+      Runtime: python3.8
+      Handler: ingestion.lambda_handler
+      Code:
+        S3Bucket: !Ref ArtifactsBucketName
+        S3Key: lambda/ingestion.zip
+      Timeout: 120
+      Environment:
+        Variables:
+          DATALAKE_BUCKET: !Ref DatalakeBucketName
+          BRONZE_PREFIX: bronze/
+          BRONZE_TO_SILVER_JOB: bronze_to_silver
+
+  # Trigger Lambda: triggered by EventBridge when bronze_to_silver SUCCEEDS, starts silver_to_gold
+  TriggerSilverToGoldLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: trigger_silver_to_gold
+      Role: !Ref LambdaExecutionRoleArn
+      Runtime: python3.8
+      Handler: trigger_silver_to_gold.lambda_handler
+      Code:
+        S3Bucket: !Ref ArtifactsBucketName
+        S3Key: lambda/trigger_silver_to_gold.zip
+      Timeout: 60
+      Environment:
+        Variables:
+          SILVER_TO_GOLD_JOB: silver_to_gold
+
+  # EventBridge rule: Glue Job State Change for bronze_to_silver SUCCEEDED
+  BronzeToSilverSucceededRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger when bronze_to_silver Glue job succeeds
+      EventPattern:
+        source:
+          - "aws.glue"
+        detail-type:
+          - "Glue Job State Change"
+        detail:
+          jobName:
+            - "bronze_to_silver"
+          state:
+            - "SUCCEEDED"
+      Targets:
+        - Arn: !GetAtt TriggerSilverToGoldLambda.Arn
+          Id: TriggerLambdaTarget
+
+  # Permission for EventBridge to invoke the Trigger Lambda
+  PermissionForEventsToInvokeTriggerLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TriggerSilverToGoldLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt BronzeToSilverSucceededRule.Arn
+
+Outputs:
+  GlueBronzeJob:
+    Value: bronze_to_silver
+  GlueSilverJob:
+    Value: silver_to_gold
+  IngestionLambda:
+    Value: ingestion_lambda
+  TriggerLambda:
+    Value: trigger_silver_to_gold
