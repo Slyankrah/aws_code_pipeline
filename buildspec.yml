@@ -31,7 +31,11 @@ phases:
       - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucket'].OutputValue" --output text)
       - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text)
       - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
+      - echo "Line 1"
+      - echo "Line 2"
       - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
+      - echo "Line 4"
+#      - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
 #      - echo "Datalake bucket: $DATALAKE_BUCKET"
 #      - echo "Lambda role ARN: $LAMBDA_ROLE_ARN"
 #      - echo "Glue role name: $GLUE_ROLE_NAME"
