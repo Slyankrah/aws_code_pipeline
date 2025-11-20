@@ -25,16 +25,16 @@ phases:
   build:
     commands:
       - echo "1) Deploy base infra (buckets, roles, glue database)..."
-#      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name $BASE_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --region $AWS_REGION
-#      - echo "2) Reading outputs from base stack..."
-#      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucket'].OutputValue" --output text)
-#      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucket'].OutputValue" --output text)
-#      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text)
-#      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
-#      - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
-#      - echo "Datalake bucket: $DATALAKE_BUCKET"
-#      - echo "Lambda role ARN: $LAMBDA_ROLE_ARN"
-#      - echo "Glue role name: $GLUE_ROLE_NAME"
+      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name $BASE_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --region $AWS_REGION
+      - echo "2) Reading outputs from base stack..."
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucket'].OutputValue" --output text)
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucket'].OutputValue" --output text)
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text)
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
+      - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
+      - echo "Datalake bucket: $DATALAKE_BUCKET"
+      - echo "Lambda role ARN: $LAMBDA_ROLE_ARN"
+      - echo "Glue role name: $GLUE_ROLE_NAME"
 #      - echo "3) Uploading artifacts..."
 #      - aws s3 cp lambda/ingestion.zip s3://$ARTIFACTS_BUCKET/lambda/ingestion.zip
 #      - aws s3 cp lambda/trigger_silver_to_gold.zip s3://$ARTIFACTS_BUCKET/lambda/trigger_silver_to_gold.zip
