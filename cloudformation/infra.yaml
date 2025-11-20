@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Big Data Pipeline Infrastructure
+
+Parameters:
+  GlueServiceRoleName:
+    Type: String
+    Default: "GlueServiceRole"
+    Description: IAM role name for Glue
+
+Resources:
+
+  S3ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub bdp-artifacts-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  S3BronzeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub bdp-datalake-bronze-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Status: Enabled
+            Prefix: archive/
+            ExpirationInDays: 365
+
+  S3SilverBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub bdp-datalake-silver-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  S3GoldBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub bdp-datalake-gold-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  GlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref GlueServiceRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: GlueS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::bdp-datalake-bronze-${AWS::AccountId}-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::bdp-datalake-silver-${AWS::AccountId}-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::bdp-datalake-gold-${AWS::AccountId}-${AWS::Region}/*
+
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: big_data_pipeline_db
+
+  GlueJobBronzeToSilver:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: bronze_to_silver
+      Role: !Ref GlueServiceRoleName
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://bdp-artifacts-${AWS::AccountId}-${AWS::Region}/glue/bronze_to_silver.py"
+        PythonVersion: "3"
+      GlueVersion: "3.0"
+      NumberOfWorkers: 2
+      WorkerType: G.1X
+      DefaultArguments:
+        --job-language: python
+        --enable-continuous-cloudwatch-log: true
+        --enable-metrics: true
+
+  GlueJobSilverToGold:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: silver_to_gold
+      Role: !Ref GlueServiceRoleName
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://bdp-artifacts-${AWS::AccountId}-${AWS::Region}/glue/silver_to_gold.py"
+        PythonVersion: "3"
+      GlueVersion: "3.0"
+      NumberOfWorkers: 2
+      WorkerType: G.1X
+      DefaultArguments:
+        --job-language: python
+        --enable-continuous-cloudwatch-log: true
+        --enable-metrics: true
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda_execution_role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaS3GlueAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - glue:StartJobRun
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: "*"
+
+  IngestionLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ingestion_lambda
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Handler: ingestion.lambda_handler
+      Code:
+        S3Bucket: !Ref S3ArtifactsBucket
+        S3Key: lambda/ingestion.zip
+      Timeout: 60
+      Environment:
+        Variables:
+          BRONZE_BUCKET: !Ref S3BronzeBucket
+
+Outputs:
+  BronzeBucket:
+    Description: Bronze S3 bucket
+    Value: !Ref S3BronzeBucket
+
+  SilverBucket:
+    Description: Silver S3 bucket
+    Value: !Ref S3SilverBucket
+
+  GoldBucket:
+    Description: Gold S3 bucket
+    Value: !Ref S3GoldBucket
+
+  ArtifactsBucket:
+    Description: Artifacts S3 bucket
+    Value: !Ref S3ArtifactsBucket
+
+  IngestionLambdaFunctionName:
+    Description: Lambda function name for ingestion
+    Value: !Ref IngestionLambdaFunction
