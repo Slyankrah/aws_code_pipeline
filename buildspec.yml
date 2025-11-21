@@ -49,6 +49,9 @@ phases:
       - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold.py
       - echo Deploying app infra...
       - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name ${APP_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=${ARTIFACTS_BUCKET} DatalakeBucketName=${DATALAKE_BUCKET} GlueServiceRoleName=${GLUE_ROLE_NAME} LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} --region ${AWS_REGION} --no-fail-on-empty-changeset
+      - echo "Triggering ingestion pipeline..."
+      - aws lambda invoke --function-name sylvester_ingestion_lambda --payload '{}' /tmp/ingest.json
+      - echo "Ingestion pipeline initialized."
 
 artifacts:
   files:
