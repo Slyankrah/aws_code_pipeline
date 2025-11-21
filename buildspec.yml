@@ -27,48 +27,25 @@ phases:
       - echo Fetching AWS Account ID and Region dynamically...
       - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - export AWS_REGION=$(aws configure get region || echo "eu-west-2")
-#      - echo "Account ID: $AWS_ACCOUNT_ID"
-#      - echo "Region: $AWS_REGION"
-
       - set -e
       - echo Deploying base infra...
-      - aws cloudformation deploy \
-          --template-file cloudformation/base-infra.yaml \
-          --stack-name ${BASE_STACK_NAME} \
-          --capabilities CAPABILITY_NAMED_IAM \
-          --parameter-overrides \
-            ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
-            DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
-          --region ${AWS_REGION}
-
+      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name ${BASE_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" --region ${AWS_REGION}
       - echo Reading outputs from base infra...
       - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || true)
       - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || true)
       - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || true)
       - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || true)
-
       - echo ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET}
       - echo DATALAKE_BUCKET=${DATALAKE_BUCKET}
       - echo LAMBDA_ROLE_ARN=${LAMBDA_ROLE_ARN}
       - echo GLUE_ROLE_NAME=${GLUE_ROLE_NAME}
-
       - echo Uploading artifacts to S3...
       - aws s3 cp lambda/sylvester_ingestion.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion.zip
       - aws s3 cp lambda/sylvester_trigger_silver_to_gold.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold.zip
       - aws s3 cp glue/sylvester_bronze_to_silver.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_bronze_to_silver.py
       - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold.py
-
       - echo Deploying app infra...
-      - aws cloudformation deploy \
-          --template-file cloudformation/app-infra.yaml \
-          --stack-name ${APP_STACK_NAME} \
-          --capabilities CAPABILITY_NAMED_IAM \
-          --parameter-overrides \
-            ArtifactsBucketName=${ARTIFACTS_BUCKET} \
-            DatalakeBucketName=${DATALAKE_BUCKET} \
-            GlueServiceRoleName=${GLUE_ROLE_NAME} \
-            LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} \
-          --region ${AWS_REGION}
+      - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name ${APP_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=${ARTIFACTS_BUCKET} DatalakeBucketName=${DATALAKE_BUCKET} GlueServiceRoleName=${GLUE_ROLE_NAME} LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} --region ${AWS_REGION}
 
 artifacts:
   files:
