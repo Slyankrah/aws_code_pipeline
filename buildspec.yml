@@ -29,7 +29,13 @@ phases:
       - export AWS_REGION=$(aws configure get region || echo "eu-west-2")
       - set -e
       - echo Deploying base infra...
-      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name ${BASE_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" --region ${AWS_REGION}
+      - aws cloudformation deploy \
+          --template-file cloudformation/base-infra.yaml \
+          --stack-name ${BASE_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
+          --region ${AWS_REGION} \
+          --no-fail-on-empty-changeset
       - echo "Checking stack events for errors..."
       - aws cloudformation describe-stack-events --stack-name ${BASE_STACK_NAME} --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`]' --output table || true
       - echo Reading outputs from base infra...
@@ -47,7 +53,13 @@ phases:
       - aws s3 cp glue/sylvester_bronze_to_silver.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_bronze_to_silver.py
       - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold.py
       - echo Deploying app infra...
-      - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name ${APP_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=${ARTIFACTS_BUCKET} DatalakeBucketName=${DATALAKE_BUCKET} GlueServiceRoleName=${GLUE_ROLE_NAME} LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} --region ${AWS_REGION}
+      - aws cloudformation deploy \
+          --template-file cloudformation/app-infra.yaml \
+          --stack-name ${APP_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides ArtifactsBucketName=${ARTIFACTS_BUCKET} DatalakeBucketName=${DATALAKE_BUCKET} GlueServiceRoleName=${GLUE_ROLE_NAME} LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} \
+          --region ${AWS_REGION} \
+          --no-fail-on-empty-changeset
 
 artifacts:
   files:
