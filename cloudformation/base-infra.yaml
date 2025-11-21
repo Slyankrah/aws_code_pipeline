@@ -1,18 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: "Base infra: buckets, IAM roles, Glue database (first deploy)"
+Description: "Base infra: IAM roles, buckets, Glue database"
 
 Parameters:
+  ArtifactsBucketName:
+    Type: String
+    Default: !Sub "sylvester-artifacts-${AWS::AccountId}-${AWS::Region}"
+  DatalakeBucketName:
+    Type: String
+    Default: !Sub "sylvester-datalake-${AWS::AccountId}-${AWS::Region}"
   GlueServiceRoleName:
     Type: String
-    Default: "GlueServiceRole"
-    Description: IAM role name for Glue
+    Default: "SylvesterGlueServiceRole"
+  LambdaExecutionRoleName:
+    Type: String
+    Default: "SylvesterLambdaExecutionRole"
 
 Resources:
 
-  S3ArtifactsBucket:
+  ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: bdp-artifacts-sylvester-eu-west-2
+      BucketName: !Ref ArtifactsBucketName
       VersioningConfiguration:
         Status: Enabled
       PublicAccessBlockConfiguration:
@@ -21,27 +29,10 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-  S3DatalakeBucket:
+  DatalakeBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: bdp-datalake-sylvester-eu-west-2
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      LifecycleConfiguration:
-        Rules:
-          - Status: Enabled
-            Prefix: archive/
-            ExpirationInDays: 365
-
-  S3RawSourceBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: bdp-raw-source-sylvester-eu-west-2
+      BucketName: !Ref DatalakeBucketName
       VersioningConfiguration:
         Status: Enabled
       PublicAccessBlockConfiguration:
@@ -55,77 +46,74 @@ Resources:
     Properties:
       RoleName: !Ref GlueServiceRoleName
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: glue.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
       Policies:
-        - PolicyName: GlueS3Access
+        - PolicyName: GlueAdditionalPermissions
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                  - s3:DeleteObject
                   - s3:ListBucket
                 Resource:
-                  - arn:aws:s3:::bdp-datalake-sylvester-eu-west-2
-                  - arn:aws:s3:::bdp-datalake-sylvester-eu-west-2/*
+                  - !Sub "arn:aws:s3:::${DatalakeBucketName}"
+                  - !Sub "arn:aws:s3:::${DatalakeBucketName}/*"
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: sylvester_lambda_execution_role
+      RoleName: !Ref LambdaExecutionRoleName
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
       Policies:
-        - PolicyName: LambdaS3GlueAccess
+        - PolicyName: LambdaAdditionalPermissions
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - glue:StartJobRun
                   - s3:GetObject
                   - s3:PutObject
-                Resource: "*"
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}"
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}/*"
+                  - !Sub "arn:aws:s3:::${DatalakeBucketName}"
+                  - !Sub "arn:aws:s3:::${DatalakeBucketName}/*"
 
   GlueDatabase:
     Type: AWS::Glue::Database
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: sylvester_big_data_pipeline_db
+        Name: sylvester_glue_database
 
 Outputs:
-  ArtifactsBucket:
-    Description: Artifacts S3 bucket name
-    Value: bdp-artifacts-sylvester-eu-west-2
+  ArtifactsBucketOut:
+    Value: !Ref ArtifactsBucketName
 
-  DatalakeBucket:
-    Description: Datalake S3 bucket name
-    Value: bdp-datalake-sylvester-eu-west-2
-
-  RawSourceBucket:
-    Description: Raw source S3 bucket name
-    Value: bdp-raw-source-sylvester-eu-west-2
+  DatalakeBucketOut:
+    Value: !Ref DatalakeBucketName
 
   GlueServiceRoleNameOut:
-    Description: Glue service role name
-    Value: !Ref GlueServiceRole
+    Value: !Ref GlueServiceRoleName
 
-  LambdaExecutionRoleArn:
-    Description: Lambda execution role ARN
+  LambdaExecutionRoleArnOut:
     Value: !GetAtt LambdaExecutionRole.Arn

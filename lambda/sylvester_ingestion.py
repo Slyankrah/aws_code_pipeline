@@ -13,12 +13,12 @@ glue_client = boto3.client('glue')
 
 DATALAKE_BUCKET = os.environ.get('DATALAKE_BUCKET')
 BRONZE_PREFIX = os.environ.get('BRONZE_PREFIX', 'bronze/')
-BRONZE_TO_SILVER_JOB = os.environ.get('BRONZE_TO_SILVER_JOB', 'bronze_to_silver')
+BRONZE_TO_SILVER_JOB = os.environ.get('BRONZE_TO_SILVER_JOB', 'sylvester_bronze_to_silver')
 
 def lambda_handler(event, context):
     logger.info("Starting ingestion lambda")
 
-    api_url = "https://api.publicapis.org/entries"  # Replace with your API
+    api_url = "https://api.publicapis.org/entries"  # Replace with your API URL
 
     try:
         with urllib.request.urlopen(api_url) as response:

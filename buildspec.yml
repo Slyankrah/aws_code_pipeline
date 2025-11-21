@@ -2,46 +2,73 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: eu-west-2
-    BASE_STACK_NAME: bdp-base-infra
-    APP_STACK_NAME: bdp-app-infra
+    BASE_STACK_NAME: "bdp-base-infra"
+    APP_STACK_NAME: "bdp-app-infra"
 
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.12
     commands:
-      - echo "Installing dependencies..."
-      - pip install --upgrade awscli boto3
+      - echo Installing dependencies...
+      - pip install --upgrade awscli boto3 jq
 
   pre_build:
     commands:
-      - echo "Packaging Lambda functions..."
+      - echo Packaging Lambda functions...
       - cd lambda
-      - zip -r ingestion.zip ingestion.py
-      - zip -r trigger_silver_to_gold.zip trigger_silver_to_gold.py
+      - zip -r ../lambda/sylvester_ingestion.zip sylvester_ingestion.py
+      - zip -r ../lambda/sylvester_trigger_silver_to_gold.zip sylvester_trigger_silver_to_gold.py
       - cd ..
+      - echo Packaging complete.
 
   build:
     commands:
-      - echo "1) Deploy base infra (buckets, roles, glue database)..."
-      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name $BASE_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --region $AWS_REGION
-      - echo "2) Reading outputs from base stack..."
-      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucket'].OutputValue" --output text)
-      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucket'].OutputValue" --output text)
-      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArn'].OutputValue" --output text)
-      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name $BASE_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
-#      - echo "Artifacts bucket: $ARTIFACTS_BUCKET"
-#      - echo "Datalake bucket: $DATALAKE_BUCKET"
-#      - echo "Lambda role ARN: $LAMBDA_ROLE_ARN"
-#      - echo "Glue role name: $GLUE_ROLE_NAME"
-      - echo "3) Uploading artifacts..."
-      - aws s3 cp lambda/ingestion.zip s3://$ARTIFACTS_BUCKET/lambda/ingestion.zip
-      - aws s3 cp lambda/trigger_silver_to_gold.zip s3://$ARTIFACTS_BUCKET/lambda/trigger_silver_to_gold.zip
-      - aws s3 cp glue/bronze_to_silver.py s3://$ARTIFACTS_BUCKET/glue/bronze_to_silver.py
-      - aws s3 cp glue/silver_to_gold.py s3://$ARTIFACTS_BUCKET/glue/silver_to_gold.py
-      - echo "4) Deploying app infra..."
-      - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name $APP_STACK_NAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=$ARTIFACTS_BUCKET DatalakeBucketName=$DATALAKE_BUCKET GlueServiceRoleName=$GLUE_ROLE_NAME LambdaExecutionRoleArn=$LAMBDA_ROLE_ARN --region $AWS_REGION
+      - echo Fetching AWS Account ID and Region dynamically...
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - export AWS_REGION=$(aws configure get region || echo "eu-west-2")
+      - echo "Account ID: $AWS_ACCOUNT_ID"
+      - echo "Region: $AWS_REGION"
+
+      - set -e
+      - echo Deploying base infra...
+      - aws cloudformation deploy \
+          --template-file cloudformation/base-infra.yaml \
+          --stack-name ${BASE_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+            ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
+            DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
+          --region ${AWS_REGION}
+
+      - echo Reading outputs from base infra...
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || true)
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || true)
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || true)
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || true)
+
+      - echo ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET}
+      - echo DATALAKE_BUCKET=${DATALAKE_BUCKET}
+      - echo LAMBDA_ROLE_ARN=${LAMBDA_ROLE_ARN}
+      - echo GLUE_ROLE_NAME=${GLUE_ROLE_NAME}
+
+      - echo Uploading artifacts to S3...
+      - aws s3 cp lambda/sylvester_ingestion.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion.zip
+      - aws s3 cp lambda/sylvester_trigger_silver_to_gold.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold.zip
+      - aws s3 cp glue/sylvester_bronze_to_silver.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_bronze_to_silver.py
+      - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold.py
+
+      - echo Deploying app infra...
+      - aws cloudformation deploy \
+          --template-file cloudformation/app-infra.yaml \
+          --stack-name ${APP_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+            ArtifactsBucketName=${ARTIFACTS_BUCKET} \
+            DatalakeBucketName=${DATALAKE_BUCKET} \
+            GlueServiceRoleName=${GLUE_ROLE_NAME} \
+            LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} \
+          --region ${AWS_REGION}
 
 artifacts:
   files:

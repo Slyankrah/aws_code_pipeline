@@ -1,11 +1,12 @@
 import sys
-from awsglue.transforms import *
+from awsglue.transforms import Filter
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'BRONZE_BUCKET', 'SILVER_BUCKET'])
+
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
@@ -24,11 +25,11 @@ bronze_df = glueContext.create_dynamic_frame.from_options(
     format="parquet"
 )
 
-# Replace 'your_column' with a real column present in your data
-silver_df = Filter.apply(frame=bronze_df, f=lambda x: x.get("your_column") is not None)
+# Example filter - adjust 'your_column' to a real column in your data to filter out nulls
+filtered_df = Filter.apply(frame=bronze_df, f=lambda x: x.get("your_column") is not None)
 
 glueContext.write_dynamic_frame.from_options(
-    frame=silver_df,
+    frame=filtered_df,
     connection_type="s3",
     connection_options={"path": silver_path},
     format="parquet"
