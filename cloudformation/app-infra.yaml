@@ -44,8 +44,8 @@ Resources:
         --job-language: "python"
         --enable-continuous-cloudwatch-log: "true"
         --enable-metrics: "true"
-        --BRONZE_BUCKET: !Sub "${DatalakeBucketName}/bronze/"
-        --SILVER_BUCKET: !Sub "${DatalakeBucketName}/silver/"
+        --BRONZE_BUCKET: !Sub "${DatalakeBucketName}"
+        --SILVER_BUCKET: !Sub "${DatalakeBucketName}"
       MaxRetries: 0
 
   GlueJobSilverToGold:
@@ -64,8 +64,8 @@ Resources:
         --job-language: "python"
         --enable-continuous-cloudwatch-log: "true"
         --enable-metrics: "true"
-        --SILVER_BUCKET: !Sub "${DatalakeBucketName}/silver/"
-        --GOLD_BUCKET: !Sub "${DatalakeBucketName}/gold/"
+        --SILVER_BUCKET: !Sub "${DatalakeBucketName}"
+        --GOLD_BUCKET: !Sub "${DatalakeBucketName}"
       MaxRetries: 0
 
   IngestionLambdaFunction:

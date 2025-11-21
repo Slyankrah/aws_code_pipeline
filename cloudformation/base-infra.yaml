@@ -64,6 +64,9 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:ListBucket
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource:
                   - !Sub "arn:aws:s3:::${DatalakeBucketName}"
                   - !Sub "arn:aws:s3:::${DatalakeBucketName}/*"
