@@ -33,10 +33,10 @@ phases:
       - echo Waiting for base infra stack completion...
       - aws cloudformation wait stack-create-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION} || aws cloudformation wait stack-update-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION}
       - echo Reading outputs from base infra...
-      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || echo "undefined")
-      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || echo "undefined")
-      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || echo "undefined")
-      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || echo "undefined")
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || echo "undefined")
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || echo "undefined")
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || echo "undefined")
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || echo "undefined")
 #      - echo ArtifactsBucketOut=$ARTIFACTS_BUCKET
 #      - echo DatalakeBucketOut=$DATALAKE_BUCKET
 #      - echo LambdaExecutionRoleArnOut=$LAMBDA_ROLE_ARN
