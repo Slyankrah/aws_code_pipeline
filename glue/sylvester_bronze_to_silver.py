@@ -27,7 +27,7 @@ bronze_df = glueContext.create_dynamic_frame.from_options(
 )
 
 # Example filter - adjust 'your_column' to a real column in your data to filter out nulls
-filtered_df = Filter.apply(frame=bronze_df, f=lambda x: x.get("your_column") is not None)
+filtered_df = Filter.apply(frame=bronze_df, f=lambda x: x.get("loan_id") is not None)
 
 glueContext.write_dynamic_frame.from_options(
     frame=filtered_df,

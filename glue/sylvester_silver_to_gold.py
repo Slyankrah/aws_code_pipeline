@@ -30,7 +30,7 @@ silver_dyf = glueContext.create_dynamic_frame.from_options(
 spark_df = silver_dyf.toDF()
 
 # Replace 'your_group_column' with a valid grouping column from your data
-gold_df = spark_df.groupBy("your_group_column").count()
+gold_df = spark_df.groupBy("start_date").count()
 
 gold_dyf = DynamicFrame.fromDF(gold_df, glueContext, "gold_dyf")
 

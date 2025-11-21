@@ -15,13 +15,22 @@ phases:
 
   pre_build:
     commands:
+      - echo Hashing Lambda + Glue scripts...
+
+      # Compute hashes
+      - HASH_INGEST=$(sha256sum lambda/sylvester_ingestion.py | cut -d ' ' -f1)
+      - HASH_TRIGGER=$(sha256sum lambda/sylvester_trigger_silver_to_gold.py | cut -d ' ' -f1)
+      - HASH_BRONZE_SILVER=$(sha256sum glue/sylvester_bronze_to_silver.py | cut -d ' ' -f1)
+      - HASH_SILVER_GOLD=$(sha256sum glue/sylvester_silver_to_gold.py | cut -d ' ' -f1)
+
+      # Package Lambda functions
       - echo Packaging Lambda functions...
-      - BUILD_ID=$(date +%Y%m%d%H%M%S)
       - cd lambda
-      - zip -r ../lambda/sylvester_ingestion_$BUILD_ID.zip sylvester_ingestion.py
-      - zip -r ../lambda/sylvester_trigger_silver_to_gold_$BUILD_ID.zip sylvester_trigger_silver_to_gold.py
+      - zip -r ../lambda/sylvester_ingestion_${HASH_INGEST}.zip sylvester_ingestion.py
+      - zip -r ../lambda/sylvester_trigger_silver_to_gold_${HASH_TRIGGER}.zip sylvester_trigger_silver_to_gold.py
       - cd ..
-      - echo Packaging complete.
+
+      # Package layer
       - echo Packaging Lambda Layer with requests...
       - rm -rf layer_build
       - mkdir -p layer_build/python
@@ -37,28 +46,62 @@ phases:
       - echo Fetching AWS Account ID and Region dynamically...
       - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - export AWS_REGION=$(aws configure get region || echo "eu-west-2")
+
       - set -e
+
+      # Base stack
       - echo Deploying base infra...
-      - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name ${BASE_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" --region ${AWS_REGION} --no-fail-on-empty-changeset
-      - echo Waiting for base infra stack completion...
+      - aws cloudformation deploy \
+          --template-file cloudformation/base-infra.yaml \
+          --stack-name ${BASE_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+              ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
+              DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" \
+          --region ${AWS_REGION} \
+          --no-fail-on-empty-changeset
+
       - aws cloudformation wait stack-create-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION}
       - aws cloudformation wait stack-update-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION} || true
-      - echo Reading outputs from base infra...
-      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || echo "undefined")
-      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || echo "undefined")
-      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || echo "undefined")
-      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || echo "undefined")
-      - echo Uploading artifacts to S3...
-      - aws s3 cp lambda/sylvester_ingestion_${BUILD_ID}.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion_${BUILD_ID}.zip
-      - aws s3 cp lambda/sylvester_trigger_silver_to_gold_${BUILD_ID}.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold_${BUILD_ID}.zip
+
+      # Read outputs
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text)
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text)
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text)
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
+
+      # Upload artifacts to S3
+      - echo Uploading Lambda artifacts...
+      - aws s3 cp lambda/sylvester_ingestion_${HASH_INGEST}.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion_${HASH_INGEST}.zip
+      - aws s3 cp lambda/sylvester_trigger_silver_to_gold_${HASH_TRIGGER}.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold_${HASH_TRIGGER}.zip
       - aws s3 cp lambda/layers/requests_layer.zip s3://${ARTIFACTS_BUCKET}/lambda/layers/requests_layer.zip
-      - aws s3 cp glue/sylvester_bronze_to_silver.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_bronze_to_silver.py
-      - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold.py
+
+      - echo Uploading Glue scripts...
+      - aws s3 cp glue/sylvester_bronze_to_silver.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_bronze_to_silver_${HASH_BRONZE_SILVER}.py
+      - aws s3 cp glue/sylvester_silver_to_gold.py s3://${ARTIFACTS_BUCKET}/glue/sylvester_silver_to_gold_${HASH_SILVER_GOLD}.py
+
+      # Deploy app stack
       - echo Deploying app infra...
-      - aws cloudformation deploy --template-file cloudformation/app-infra.yaml --stack-name ${APP_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName=${ARTIFACTS_BUCKET} DatalakeBucketName=${DATALAKE_BUCKET} GlueServiceRoleName=${GLUE_ROLE_NAME} LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} SylvesterIngestionLambdaS3Key=lambda/sylvester_ingestion_${BUILD_ID}.zip SylvesterTriggerLambdaS3Key=lambda/sylvester_trigger_silver_to_gold_${BUILD_ID}.zip --region ${AWS_REGION} --no-fail-on-empty-changeset
-      - echo "Triggering ingestion pipeline..."
+      - aws cloudformation deploy \
+          --template-file cloudformation/app-infra.yaml \
+          --stack-name ${APP_STACK_NAME} \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+              ArtifactsBucketName=${ARTIFACTS_BUCKET} \
+              DatalakeBucketName=${DATALAKE_BUCKET} \
+              GlueServiceRoleName=${GLUE_ROLE_NAME} \
+              LambdaExecutionRoleArn=${LAMBDA_ROLE_ARN} \
+              SylvesterIngestionLambdaS3Key=lambda/sylvester_ingestion_${HASH_INGEST}.zip \
+              SylvesterTriggerLambdaS3Key=lambda/sylvester_trigger_silver_to_gold_${HASH_TRIGGER}.zip \
+              BronzeToSilverScriptKey=glue/sylvester_bronze_to_silver_${HASH_BRONZE_SILVER}.py \
+              SilverToGoldScriptKey=glue/sylvester_silver_to_gold_${HASH_SILVER_GOLD}.py \
+          --region ${AWS_REGION} \
+          --no-fail-on-empty-changeset
+
+      # Trigger ingestion
+      - echo Triggering ingestion pipeline...
       - aws lambda invoke --function-name sylvester_ingestion_lambda --payload '{}' /tmp/ingest.json
-      - echo "Ingestion pipeline initialized."
+      - echo Ingestion pipeline initialized.
 
 artifacts:
   files:

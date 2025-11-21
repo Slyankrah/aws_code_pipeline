@@ -10,9 +10,13 @@ Parameters:
     Type: String
   LambdaExecutionRoleArn:
     Type: String
-  SylvesterIngestionLambdaS3Key: # NEW
+  SylvesterIngestionLambdaS3Key:
     Type: String
-  SylvesterTriggerLambdaS3Key: # NEW
+  SylvesterTriggerLambdaS3Key:
+    Type: String
+  BronzeToSilverScriptKey:
+    Type: String
+  SilverToGoldScriptKey:
     Type: String
 
 Resources:
@@ -35,7 +39,7 @@ Resources:
       Role: !Ref GlueServiceRoleName
       Command:
         Name: glueetl
-        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/glue/sylvester_bronze_to_silver.py"
+        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/${BronzeToSilverScriptKey}"
         PythonVersion: "3"
       GlueVersion: "3.0"
       NumberOfWorkers: 2
@@ -55,7 +59,7 @@ Resources:
       Role: !Ref GlueServiceRoleName
       Command:
         Name: glueetl
-        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/glue/sylvester_silver_to_gold.py"
+        ScriptLocation: !Sub "s3://${ArtifactsBucketName}/${SilverToGoldScriptKey}"
         PythonVersion: "3"
       GlueVersion: "3.0"
       NumberOfWorkers: 2
