@@ -79,7 +79,7 @@ Resources:
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: lambda_execution_role
+      RoleName: sylvester_lambda_execution_role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -107,7 +107,7 @@ Resources:
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: big_data_pipeline_db
+        Name: sylvester_big_data_pipeline_db
 
 Outputs:
   ArtifactsBucket:
