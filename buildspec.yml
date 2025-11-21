@@ -37,10 +37,10 @@ phases:
       - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text)
       - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text)
       - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text)
-      - echo ArtifactsBucketOut=$ARTIFACTS_BUCKET
-      - echo DatalakeBucketOut=$DATALAKE_BUCKET
-      - echo LambdaExecutionRoleArnOut=$LAMBDA_ROLE_ARN
-      - echo GlueServiceRoleNameOut=$GLUE_ROLE_NAME
+      - echo ArtifactsBucketOut=${ARTIFACTS_BUCKET:-"undefined"}
+      - echo DatalakeBucketOut=${DATALAKE_BUCKET:-"undefined"}
+      - echo LambdaExecutionRoleArnOut=${LAMBDA_ROLE_ARN:-"undefined"}
+      - echo GlueServiceRoleNameOut=${GLUE_ROLE_NAME:-"undefined"}
       - if [ -z "$ARTIFACTS_BUCKET" ] || [ -z "$DATALAKE_BUCKET" ] || [ -z "$LAMBDA_ROLE_ARN" ] || [ -z "$GLUE_ROLE_NAME" ]; then echo "ERROR: Missing required parameters from base infra outputs"; exit 1; fi
       - echo Uploading artifacts to S3...
       - aws s3 cp lambda/sylvester_ingestion.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion.zip
