@@ -10,6 +10,10 @@ Parameters:
     Type: String
   LambdaExecutionRoleArn:
     Type: String
+  SylvesterIngestionLambdaS3Key: # NEW
+    Type: String
+  SylvesterTriggerLambdaS3Key: # NEW
+    Type: String
 
 Resources:
 
@@ -73,7 +77,7 @@ Resources:
       Handler: sylvester_ingestion.lambda_handler
       Code:
         S3Bucket: !Ref ArtifactsBucketName
-        S3Key: lambda/sylvester_ingestion.zip
+        S3Key: !Ref SylvesterIngestionLambdaS3Key
       Timeout: 120
       Environment:
         Variables:
@@ -94,7 +98,7 @@ Resources:
       Handler: sylvester_trigger_silver_to_gold.lambda_handler
       Code:
         S3Bucket: !Ref ArtifactsBucketName
-        S3Key: lambda/sylvester_trigger_silver_to_gold.zip
+        S3Key: !Ref SylvesterTriggerLambdaS3Key
       Timeout: 60
       Environment:
         Variables:
