@@ -4,10 +4,10 @@ Description: "Base infra: IAM roles, buckets, Glue database"
 Parameters:
   ArtifactsBucketName:
     Type: String
-    Default: !Sub "sylvester-artifacts-${AWS::AccountId}-${AWS::Region}"
+    Default: "sylvester-artifacts-430006376054-eu-west-2"
   DatalakeBucketName:
     Type: String
-    Default: !Sub "sylvester-datalake-${AWS::AccountId}-${AWS::Region}"
+    Default: "sylvester-datalake-430006376054-eu-west-2"
   GlueServiceRoleName:
     Type: String
     Default: "SylvesterGlueServiceRole"
