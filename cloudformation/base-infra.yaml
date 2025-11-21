@@ -107,13 +107,17 @@ Resources:
 
 Outputs:
   ArtifactsBucketOut:
-    Value: !Ref ArtifactsBucketName
+    Description: "Artifacts S3 bucket name"
+    Value: !Ref ArtifactsBucket
 
   DatalakeBucketOut:
-    Value: !Ref DatalakeBucketName
-
-  GlueServiceRoleNameOut:
-    Value: !Ref GlueServiceRoleName
+    Description: "Datalake S3 bucket name"
+    Value: !Ref DatalakeBucket
 
   LambdaExecutionRoleArnOut:
+    Description: "Lambda execution role ARN"
     Value: !GetAtt LambdaExecutionRole.Arn
+
+  GlueServiceRoleNameOut:
+    Description: "Glue service role name"
+    Value: !Ref GlueServiceRole
