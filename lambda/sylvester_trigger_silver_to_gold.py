@@ -3,7 +3,7 @@ import boto3
 import logging
 import os
 
-#Test
+#Hurraaayyyyyyy
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 

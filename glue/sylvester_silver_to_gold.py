@@ -6,7 +6,7 @@ from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsglue.dynamicframe import DynamicFrame
 
-# Test
+#Hurraaayyyyyyy
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'SILVER_BUCKET', 'GOLD_BUCKET'])
 
 sc = SparkContext()

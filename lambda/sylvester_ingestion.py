@@ -5,7 +5,7 @@ import requests
 import datetime
 import os
 
-#Test
+#Hurraaayyyyyyy
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -25,7 +25,8 @@ def lambda_handler(event, context):
     try:
         headers = {'Authorization': f'Api-Key {API_KEY}'}
 
-        response = requests.get(API_URL, headers=headers, timeout=30)
+        # response = requests.get(API_URL, headers=headers, timeout=30)
+        response = requests.get(API_URL, headers=headers, timeout=30, verify=False)
         response.raise_for_status()  # raise exception for HTTP errors
 
         data = response.text
