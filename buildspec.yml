@@ -17,7 +17,6 @@ phases:
     commands:
       - echo Packaging Lambda functions...
       - BUILD_ID=$(date +%Y%m%d%H%M%S)
-      - echo Build ID: $BUILD_ID
       - cd lambda
       - zip -r ../lambda/sylvester_ingestion_$BUILD_ID.zip sylvester_ingestion.py
       - zip -r ../lambda/sylvester_trigger_silver_to_gold_$BUILD_ID.zip sylvester_trigger_silver_to_gold.py
