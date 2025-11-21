@@ -33,19 +33,15 @@ phases:
       - echo Waiting for base infra stack completion...
       - aws cloudformation wait stack-create-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION} || aws cloudformation wait stack-update-complete --stack-name ${BASE_STACK_NAME} --region ${AWS_REGION}
       - echo Reading outputs from base infra...
-      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || echo "undefined")
-      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || echo "undefined")
-      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || echo "undefined")
-      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || echo "undefined")
-      - if [ -z "$ARTIFACTS_BUCKET" ]; then ARTIFACTS_BUCKET="undefined"; fi
-      - if [ -z "$DATALAKE_BUCKET" ]; then DATALAKE_BUCKET="undefined"; fi
-      - if [ -z "$LAMBDA_ROLE_ARN" ]; then LAMBDA_ROLE_ARN="undefined"; fi
-      - if [ -z "$GLUE_ROLE_NAME" ]; then GLUE_ROLE_NAME="undefined"; fi
-      - echo "Resolved ARTIFACTS_BUCKET=$ARTIFACTS_BUCKET"
-      - echo "Resolved DATALAKE_BUCKET=$DATALAKE_BUCKET"
-      - echo "Resolved LAMBDA_ROLE_ARN=$LAMBDA_ROLE_ARN"
-      - echo "Resolved GLUE_ROLE_NAME=$GLUE_ROLE_NAME"
-      - if [ "$ARTIFACTS_BUCKET" = "undefined" ] || [ "$DATALAKE_BUCKET" = "undefined" ] || [ "$LAMBDA_ROLE_ARN" = "undefined" ] || [ "$GLUE_ROLE_NAME" = "undefined" ]; then echo "ERROR: Missing required outputs from base infra stack"; exit 1; fi
+      - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || echo "undefined")
+      - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || echo "undefined")
+      - LAMBDA_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='LambdaExecutionRoleArnOut'].OutputValue" --output text || echo "undefined")
+      - GLUE_ROLE_NAME=$(aws cloudformation describe-stacks --stack-name ${APP_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='GlueServiceRoleNameOut'].OutputValue" --output text || echo "undefined")
+#      - echo ArtifactsBucketOut=$ARTIFACTS_BUCKET
+#      - echo DatalakeBucketOut=$DATALAKE_BUCKET
+#      - echo LambdaExecutionRoleArnOut=$LAMBDA_ROLE_ARN
+#      - echo GlueServiceRoleNameOut=$GLUE_ROLE_NAME
+#      - if [ -z "$ARTIFACTS_BUCKET" ] || [ -z "$DATALAKE_BUCKET" ] || [ -z "$LAMBDA_ROLE_ARN" ] || [ -z "$GLUE_ROLE_NAME" ]; then echo "ERROR: Missing required parameters from base infra outputs"; exit 1; fi
       - echo Uploading artifacts to S3...
       - aws s3 cp lambda/sylvester_ingestion.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion.zip
       - aws s3 cp lambda/sylvester_trigger_silver_to_gold.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold.zip
