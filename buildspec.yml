@@ -30,6 +30,8 @@ phases:
       - set -e
       - echo Deploying base infra...
       - aws cloudformation deploy --template-file cloudformation/base-infra.yaml --stack-name ${BASE_STACK_NAME} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ArtifactsBucketName="sylvester-artifacts-${AWS_ACCOUNT_ID}-${AWS_REGION}" DatalakeBucketName="sylvester-datalake-${AWS_ACCOUNT_ID}-${AWS_REGION}" --region ${AWS_REGION}
+      - echo "Checking stack events for errors..."
+      - aws cloudformation describe-stack-events --stack-name ${BASE_STACK_NAME} --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`]' --output table || true
       - echo Reading outputs from base infra...
       - ARTIFACTS_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ArtifactsBucketOut'].OutputValue" --output text || true)
       - DATALAKE_BUCKET=$(aws cloudformation describe-stacks --stack-name ${BASE_STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='DatalakeBucketOut'].OutputValue" --output text || true)
