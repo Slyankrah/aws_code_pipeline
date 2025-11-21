@@ -2,8 +2,8 @@ version: 0.2
 
 env:
   variables:
-    BASE_STACK_NAME: "bdp-base-infra"
-    APP_STACK_NAME: "bdp-app-infra"
+    BASE_STACK_NAME: "sylvester-bdp-base-infra"
+    APP_STACK_NAME: "sylvester-bdp-app-infra"
 
 phases:
   install:
