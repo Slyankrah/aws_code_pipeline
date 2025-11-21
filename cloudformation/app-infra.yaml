@@ -69,6 +69,8 @@ Resources:
           DATALAKE_BUCKET: !Ref DatalakeBucketName
           BRONZE_PREFIX: bronze/
           BRONZE_TO_SILVER_JOB: sylvester_bronze_to_silver
+          API_URL: "https://www.vaikcam.com/api/loans/"
+          API_KEY: "sylvester-api-secrete-key-003£&"   # ideally, use AWS Secrets Manager or Parameter Store for better security
 
   TriggerSilverToGoldLambda:
     Type: AWS::Lambda::Function

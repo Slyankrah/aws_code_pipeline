@@ -15,15 +15,27 @@ DATALAKE_BUCKET = os.environ.get('DATALAKE_BUCKET')
 BRONZE_PREFIX = os.environ.get('BRONZE_PREFIX', 'bronze/')
 BRONZE_TO_SILVER_JOB = os.environ.get('BRONZE_TO_SILVER_JOB', 'sylvester_bronze_to_silver')
 
+API_URL = os.environ.get('API_URL', 'https://www.vaikcam.com/api/loans/')
+API_KEY = os.environ.get('API_KEY')   # MUST be provided as environment variable
+
 def lambda_handler(event, context):
     logger.info("Starting ingestion lambda")
 
-    api_url = "https://api.publicapis.org/entries"  # Replace with your API URL
-
     try:
-        with urllib.request.urlopen(api_url) as response:
-            data = response.read().decode('utf-8')
+        # --- Prepare request with API key headers ---
+        req = urllib.request.Request(
+            API_URL,
+            headers={'Authorization': f'Api-Key {API_KEY}'},
+            method="GET"
+        )
 
+        # --- Send request ---
+        with urllib.request.urlopen(req, timeout=30) as response:
+            if response.status != 200:
+                raise Exception(f"API returned status {response.status}")
+            data = response.read().decode("utf-8")
+
+        # --- Upload to S3 with timestamped file ---
         timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%SZ')
         s3_key = f"{BRONZE_PREFIX}incoming/raw_api_data_{timestamp}.json"
 
@@ -31,23 +43,28 @@ def lambda_handler(event, context):
             Bucket=DATALAKE_BUCKET,
             Key=s3_key,
             Body=data,
-            ContentType='application/json'
+            ContentType="application/json"
         )
+
         logger.info(f"Uploaded raw data to s3://{DATALAKE_BUCKET}/{s3_key}")
 
-        # Trigger Glue job bronze_to_silver
+        # --- Trigger Bronze → Silver Glue job ---
         resp = glue_client.start_job_run(JobName=BRONZE_TO_SILVER_JOB)
-        job_run_id = resp.get('JobRunId')
+        job_run_id = resp.get("JobRunId")
+
         logger.info(f"Started Glue job {BRONZE_TO_SILVER_JOB} JobRunId={job_run_id}")
 
         return {
-            'statusCode': 200,
-            'body': json.dumps({'message': 'Ingested and triggered Glue job', 'job_run_id': job_run_id})
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Ingested and triggered Glue job",
+                "job_run_id": job_run_id
+            })
         }
 
     except Exception as e:
         logger.exception("Ingestion failed")
         return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
         }
