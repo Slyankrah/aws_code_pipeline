@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Base infra: buckets, IAM roles, Glue database (first deploy)
+Description: "Base infra: buckets, IAM roles, Glue database (first deploy)"
 
 Parameters:
   GlueServiceRoleName:

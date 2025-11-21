@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: App infra: Glue jobs, Lambdas, EventBridge (deploy after artifacts uploaded)
+Description: "App infra: Glue jobs, Lambdas, EventBridge (deploy after artifacts uploaded)"
 
 Parameters:
   ArtifactsBucketName:
