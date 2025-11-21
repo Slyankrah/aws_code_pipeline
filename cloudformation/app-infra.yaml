@@ -13,6 +13,17 @@ Parameters:
 
 Resources:
 
+  RequestsLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: sylvester-requests-layer
+      Description: "Python requests library for ingestion Lambda"
+      Content:
+        S3Bucket: !Ref ArtifactsBucketName
+        S3Key: lambda/layers/requests_layer.zip
+      CompatibleRuntimes:
+        - python3.12
+
   GlueJobBronzeToSilver:
     Type: AWS::Glue::Job
     Properties:
@@ -71,6 +82,8 @@ Resources:
           BRONZE_TO_SILVER_JOB: sylvester_bronze_to_silver
           API_URL: "https://www.vaikcam.com/api/loans/"
           API_KEY: "sylvester-api-secrete-key-003£&"   # ideally, use AWS Secrets Manager or Parameter Store for better security
+      Layers:
+        - !Ref RequestsLayer
 
   TriggerSilverToGoldLambda:
     Type: AWS::Lambda::Function

@@ -21,6 +21,15 @@ phases:
       - zip -r ../lambda/sylvester_trigger_silver_to_gold.zip sylvester_trigger_silver_to_gold.py
       - cd ..
       - echo Packaging complete.
+      - echo Packaging Lambda Layer with requests...
+      - rm -rf layer_build
+      - mkdir -p layer_build/python
+      - pip install requests -t layer_build/python/
+      - cd layer_build
+      - zip -r ../lambda/layers/requests_layer.zip python
+      - cd ..
+      - echo Lambda Layer packaged.
+
 
   build:
     commands:

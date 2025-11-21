@@ -1,7 +1,7 @@
 import json
 import boto3
 import logging
-import urllib.request
+import requests
 import datetime
 import os
 
@@ -22,20 +22,13 @@ def lambda_handler(event, context):
     logger.info("Starting ingestion lambda")
 
     try:
-        # --- Prepare request with API key headers ---
-        req = urllib.request.Request(
-            API_URL,
-            headers={'Authorization': f'Api-Key {API_KEY}'},
-            method="GET"
-        )
+        headers = {'Authorization': f'Api-Key {API_KEY}'}
 
-        # --- Send request ---
-        with urllib.request.urlopen(req, timeout=30) as response:
-            if response.status != 200:
-                raise Exception(f"API returned status {response.status}")
-            data = response.read().decode("utf-8")
+        response = requests.get(API_URL, headers=headers, timeout=30)
+        response.raise_for_status()  # raise exception for HTTP errors
 
-        # --- Upload to S3 with timestamped file ---
+        data = response.text
+
         timestamp = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%SZ')
         s3_key = f"{BRONZE_PREFIX}incoming/raw_api_data_{timestamp}.json"
 
@@ -48,7 +41,6 @@ def lambda_handler(event, context):
 
         logger.info(f"Uploaded raw data to s3://{DATALAKE_BUCKET}/{s3_key}")
 
-        # --- Trigger Bronze → Silver Glue job ---
         resp = glue_client.start_job_run(JobName=BRONZE_TO_SILVER_JOB)
         job_run_id = resp.get("JobRunId")
 
