@@ -23,7 +23,7 @@ silver_path = f"s3://{SILVER_BUCKET}/silver/"
 bronze_df = glueContext.create_dynamic_frame.from_options(
     connection_type="s3",
     connection_options={"paths": [bronze_path]},
-    format="parquet"
+    format="json"
 )
 
 # Example filter - adjust 'your_column' to a real column in your data to filter out nulls
