@@ -41,7 +41,7 @@ phases:
 #      - echo DatalakeBucketOut=$DATALAKE_BUCKET
 #      - echo LambdaExecutionRoleArnOut=$LAMBDA_ROLE_ARN
 #      - echo GlueServiceRoleNameOut=$GLUE_ROLE_NAME
-      - if [ -z "$ARTIFACTS_BUCKET" ] || [ -z "$DATALAKE_BUCKET" ] || [ -z "$LAMBDA_ROLE_ARN" ] || [ -z "$GLUE_ROLE_NAME" ]; then echo "ERROR: Missing required parameters from base infra outputs"; exit 1; fi
+#      - if [ -z "$ARTIFACTS_BUCKET" ] || [ -z "$DATALAKE_BUCKET" ] || [ -z "$LAMBDA_ROLE_ARN" ] || [ -z "$GLUE_ROLE_NAME" ]; then echo "ERROR: Missing required parameters from base infra outputs"; exit 1; fi
       - echo Uploading artifacts to S3...
       - aws s3 cp lambda/sylvester_ingestion.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_ingestion.zip
       - aws s3 cp lambda/sylvester_trigger_silver_to_gold.zip s3://${ARTIFACTS_BUCKET}/lambda/sylvester_trigger_silver_to_gold.zip
