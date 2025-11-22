@@ -17,7 +17,7 @@ job.init(args['JOB_NAME'], args)
 BRONZE_BUCKET = args['BRONZE_BUCKET']
 SILVER_BUCKET = args['SILVER_BUCKET']
 
-bronze_path = f"s3://{BRONZE_BUCKET}/bronze/"
+bronze_path = f"s3://{BRONZE_BUCKET}/bronze/incoming/"
 silver_path = f"s3://{SILVER_BUCKET}/silver/"
 
 bronze_df = glueContext.create_dynamic_frame.from_options(

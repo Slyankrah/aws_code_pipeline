@@ -6,7 +6,6 @@ from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsglue.dynamicframe import DynamicFrame
 
-#Hurraaayyyyyyy
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'SILVER_BUCKET', 'GOLD_BUCKET'])
 
 sc = SparkContext()
@@ -21,15 +20,17 @@ GOLD_BUCKET = args['GOLD_BUCKET']
 silver_path = f"s3://{SILVER_BUCKET}/silver/"
 gold_path = f"s3://{GOLD_BUCKET}/gold/"
 
+# Read CSV from silver
 silver_dyf = glueContext.create_dynamic_frame.from_options(
     connection_type="s3",
     connection_options={"paths": [silver_path]},
-    format="parquet"
+    format="csv",
+    format_options={"withHeader": True}
 )
 
 spark_df = silver_dyf.toDF()
 
-# Replace 'your_group_column' with a valid grouping column from your data
+# Example transformation — customize as needed
 gold_df = spark_df.groupBy("start_date").count()
 
 gold_dyf = DynamicFrame.fromDF(gold_df, glueContext, "gold_dyf")
