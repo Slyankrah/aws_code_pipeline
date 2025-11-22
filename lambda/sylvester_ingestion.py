@@ -5,7 +5,7 @@ import requests
 import datetime
 import os
 
-#Hurraaayyyyyyy
+#Final check
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
