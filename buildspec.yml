@@ -16,7 +16,7 @@ phases:
   pre_build:
     commands:
       - echo Hashing Lambda + Glue scripts...
-      # Compute hashes hi
+      # Compute hashes
       - HASH_INGEST=$(sha256sum lambda/sylvester_ingestion.py | cut -d ' ' -f1)
       - HASH_TRIGGER=$(sha256sum lambda/sylvester_trigger_silver_to_gold.py | cut -d ' ' -f1)
       - HASH_BRONZE_SILVER=$(sha256sum glue/sylvester_bronze_to_silver.py | cut -d ' ' -f1)
